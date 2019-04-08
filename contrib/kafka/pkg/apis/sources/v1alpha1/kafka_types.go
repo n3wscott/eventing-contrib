@@ -44,7 +44,7 @@ type KafkaSource struct {
 var _ runtime.Object = (*KafkaSource)(nil)
 
 // Check that KafkaSource will be checked for immutable fields.
-var _ apis.Immutable = (*KafkaSource)(nil)
+var _ apis.DeprecatedImmutable = (*KafkaSource)(nil)
 
 // Check that KafkaSource implements the Conditions duck type.
 var _ = duck.VerifyType(&KafkaSource{}, &duckv1alpha1.Conditions{})

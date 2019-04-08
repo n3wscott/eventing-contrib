@@ -44,7 +44,7 @@ type GcpPubSubSource struct {
 var _ runtime.Object = (*GcpPubSubSource)(nil)
 
 // Check that GcpPubSubSource will be checked for immutable fields.
-var _ apis.Immutable = (*GcpPubSubSource)(nil)
+var _ apis.DeprecatedImmutable = (*GcpPubSubSource)(nil)
 
 // Check that GcpPubSubSource implements the Conditions duck type.
 var _ = duck.VerifyType(&GcpPubSubSource{}, &duckv1alpha1.Conditions{})
