@@ -17,10 +17,8 @@ commands from the root.
     [Knative Eventing](https://github.com/knative/docs/tree/master/eventing).
 
 1.  The
-    [in-memory `ClusterChannelProvisioner`](https://knative.dev/eventing/tree/master/config/provisioners/in-memory-channel)
-    should be installed in your cluster. At the time of writing (release v0.5.0)
-    it is part of the default instructions so you will probably have it there
-    already.
+    [in-memory `Channel`](https://github.com/knative/eventing/tree/master/config/in-memory-channel)
+    should be installed in your cluster.
 
 ### Create a channel and subscriber
 

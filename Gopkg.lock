@@ -676,13 +676,10 @@
   version = "v1.4.3"
 
 [[projects]]
-  digest = "1:30d8d292e63a28d0dccdfc48696d43dd8bdd808c26b017c93ead6c88ffabdb37"
+  digest = "1:1904e7dd4a67274b95147e9a663432d1c523ea98f8c948bb3a67d4ce1dd346b6"
   name = "github.com/openzipkin/zipkin-go"
   packages = [
-    ".",
-    "idgenerator",
     "model",
-    "propagation",
     "reporter",
     "reporter/http",
   ]
@@ -1200,17 +1197,11 @@
   version = "kubernetes-1.12.6"
 
 [[projects]]
-  digest = "1:e464a08adca7204feeb7c356010d02e0c2c9d20ac30d476235351be105e5132f"
+  digest = "1:b8a1dcc5f4e559b7af185ba12dd341cb8c175ea3d36227a02699b251ae5fde05"
   name = "k8s.io/apiextensions-apiserver"
   packages = [
     "pkg/apis/apiextensions",
     "pkg/apis/apiextensions/v1beta1",
-    "pkg/client/clientset/clientset",
-    "pkg/client/clientset/clientset/fake",
-    "pkg/client/clientset/clientset/scheme",
-    "pkg/client/clientset/clientset/typed/apiextensions/v1beta1",
-    "pkg/client/clientset/clientset/typed/apiextensions/v1beta1/fake",
-    "pkg/client/listers/apiextensions/v1beta1",
   ]
   pruneopts = "NUT"
   revision = "bd0469a053ff88529a61145790499fe78a09a49d"
@@ -1499,7 +1490,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3ec436792eeacb49e37d22c0750004f0cd3603287fa4dc8faee824beb3cd5573"
+  digest = "1:ffee5529a7978197c7c433dd4655fca073f49e68256e70337c523241fd0c7fc9"
   name = "knative.dev/eventing"
   packages = [
     "pkg/apis/duck",
@@ -1510,6 +1501,9 @@
     "pkg/apis/messaging/v1alpha1",
     "pkg/apis/sources",
     "pkg/apis/sources/v1alpha1",
+    "pkg/channel",
+    "pkg/channel/fanout",
+    "pkg/channel/multichannelfanout",
     "pkg/client/clientset/versioned",
     "pkg/client/clientset/versioned/fake",
     "pkg/client/clientset/versioned/scheme",
@@ -1519,25 +1513,15 @@
     "pkg/client/clientset/versioned/typed/messaging/v1alpha1/fake",
     "pkg/client/clientset/versioned/typed/sources/v1alpha1",
     "pkg/client/clientset/versioned/typed/sources/v1alpha1/fake",
-    "pkg/client/injection/client",
-    "pkg/client/injection/client/fake",
-    "pkg/client/listers/eventing/v1alpha1",
-    "pkg/client/listers/messaging/v1alpha1",
-    "pkg/client/listers/sources/v1alpha1",
     "pkg/configmap",
-    "pkg/duck",
     "pkg/logconfig",
     "pkg/logging",
-    "pkg/provisioners",
-    "pkg/provisioners/fanout",
-    "pkg/provisioners/multichannelfanout",
     "pkg/reconciler/names",
-    "pkg/reconciler/testing",
     "pkg/tracing",
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "ebe59f22c47c09881f723fb73fe21c7441528281"
+  revision = "2e2f241b1ddf055baa1e83431711918a1267e74c"
 
 [[projects]]
   branch = "master"
@@ -1564,10 +1548,6 @@
     "configmap",
     "controller",
     "injection",
-    "injection/clients/dynamicclient",
-    "injection/clients/dynamicclient/fake",
-    "injection/clients/kubeclient",
-    "injection/clients/kubeclient/fake",
     "kmeta",
     "kmp",
     "logging",
@@ -1778,16 +1758,16 @@
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "knative.dev/eventing/pkg/apis/duck/v1alpha1",
     "knative.dev/eventing/pkg/apis/eventing/v1alpha1",
+    "knative.dev/eventing/pkg/apis/messaging/v1alpha1",
     "knative.dev/eventing/pkg/apis/sources/v1alpha1",
+    "knative.dev/eventing/pkg/channel",
+    "knative.dev/eventing/pkg/channel/fanout",
+    "knative.dev/eventing/pkg/channel/multichannelfanout",
     "knative.dev/eventing/pkg/client/clientset/versioned",
     "knative.dev/eventing/pkg/client/clientset/versioned/fake",
     "knative.dev/eventing/pkg/logconfig",
     "knative.dev/eventing/pkg/logging",
-    "knative.dev/eventing/pkg/provisioners",
-    "knative.dev/eventing/pkg/provisioners/fanout",
-    "knative.dev/eventing/pkg/provisioners/multichannelfanout",
     "knative.dev/eventing/pkg/reconciler/names",
-    "knative.dev/eventing/pkg/reconciler/testing",
     "knative.dev/eventing/pkg/tracing",
     "knative.dev/eventing/pkg/utils",
     "knative.dev/pkg/apis",

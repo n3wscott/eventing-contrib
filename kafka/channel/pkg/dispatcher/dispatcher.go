@@ -28,10 +28,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
 
-	"knative.dev/eventing-contrib/kafka/channel/pkg/controller"
 	eventingduck "knative.dev/eventing/pkg/apis/duck/v1alpha1"
-	"knative.dev/eventing/pkg/provisioners"
-	"knative.dev/eventing/pkg/provisioners/multichannelfanout"
+	"knative.dev/eventing/pkg/channel"
+	"knative.dev/eventing/pkg/channel/multichannelfanout"
 )
 
 type KafkaDispatcher struct {
@@ -41,11 +40,11 @@ type KafkaDispatcher struct {
 	// hostToChannelMapLock is used to update hostToChannelMap
 	hostToChannelMapLock sync.Mutex
 
-	receiver   *provisioners.MessageReceiver
-	dispatcher *provisioners.MessageDispatcher
+	receiver   *channel.MessageReceiver
+	dispatcher *channel.MessageDispatcher
 
 	kafkaAsyncProducer sarama.AsyncProducer
-	kafkaConsumers     map[provisioners.ChannelReference]map[subscription]KafkaConsumer
+	kafkaConsumers     map[channel.ChannelReference]map[subscription]KafkaConsumer
 	// consumerUpdateLock must be used to update kafkaConsumers
 	consumerUpdateLock sync.Mutex
 	kafkaCluster       KafkaCluster
@@ -107,7 +106,7 @@ func (d *KafkaDispatcher) configDiff(updated *multichannelfanout.Config) string 
 	return cmp.Diff(d.getConfig(), updated)
 }
 
-// UpdateKafkaConsumers will be called by new CRD based kafka channel dispatcher controller, instead of UpdateConfig.
+// UpdateKafkaConsumers will be called by new CRD based kafka channel dispatcher controller.
 func (d *KafkaDispatcher) UpdateKafkaConsumers(config *multichannelfanout.Config) (map[eventingduck.SubscriberSpec]error, error) {
 	if config == nil {
 		return nil, fmt.Errorf("nil config")
@@ -119,7 +118,7 @@ func (d *KafkaDispatcher) UpdateKafkaConsumers(config *multichannelfanout.Config
 	newSubs := make(map[subscription]bool)
 	failedToSubscribe := make(map[eventingduck.SubscriberSpec]error)
 	for _, cc := range config.ChannelConfigs {
-		channelRef := provisioners.ChannelReference{
+		channelRef := channel.ChannelReference{
 			Name:      cc.Name,
 			Namespace: cc.Namespace,
 		}
@@ -147,7 +146,7 @@ func (d *KafkaDispatcher) UpdateKafkaConsumers(config *multichannelfanout.Config
 	return failedToSubscribe, nil
 }
 
-// UpdateHostToChannelMap will be called by new CRD based kafka channel dispatcher controller, instead of UpdateConfig.
+// UpdateHostToChannelMap will be called by new CRD based kafka channel dispatcher controller.
 func (d *KafkaDispatcher) UpdateHostToChannelMap(config *multichannelfanout.Config) error {
 	if config == nil {
 		return errors.New("nil config")
@@ -165,25 +164,8 @@ func (d *KafkaDispatcher) UpdateHostToChannelMap(config *multichannelfanout.Conf
 	return nil
 }
 
-// UpdateConfig is used by older kafka channel dispatcher controller that is based on ClusterChannelProvisioners model
-// Remove this function when the older channel code is deleted
-func (d *KafkaDispatcher) UpdateConfig(config *multichannelfanout.Config) error {
-	if config == nil {
-		return errors.New("nil config")
-	}
-
-	if _, err := d.UpdateKafkaConsumers(config); err != nil {
-		return err
-	}
-	if err := d.UpdateHostToChannelMap(config); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func createHostToChannelMap(config *multichannelfanout.Config) (map[string]provisioners.ChannelReference, error) {
-	hcMap := make(map[string]provisioners.ChannelReference, len(config.ChannelConfigs))
+func createHostToChannelMap(config *multichannelfanout.Config) (map[string]channel.ChannelReference, error) {
+	hcMap := make(map[string]channel.ChannelReference, len(config.ChannelConfigs))
 	for _, cConfig := range config.ChannelConfigs {
 		if cr, ok := hcMap[cConfig.HostName]; ok {
 			return nil, fmt.Errorf(
@@ -194,7 +176,7 @@ func createHostToChannelMap(config *multichannelfanout.Config) (map[string]provi
 				cr.Namespace,
 				cr.Name)
 		}
-		hcMap[cConfig.HostName] = provisioners.ChannelReference{Name: cConfig.Name, Namespace: cConfig.Namespace}
+		hcMap[cConfig.HostName] = channel.ChannelReference{Name: cConfig.Name, Namespace: cConfig.Namespace}
 	}
 	return hcMap, nil
 }
@@ -225,13 +207,13 @@ func (d *KafkaDispatcher) Start(stopCh <-chan struct{}) error {
 	return d.receiver.Start(stopCh)
 }
 
-// subscribe reads kafkaConsumers which gets updated in UpdateConfig in a separate go-routine.
+// subscribe reads kafkaConsumers which gets updated in a separate go-routine.
 // subscribe must be called under updateLock.
-func (d *KafkaDispatcher) subscribe(channelRef provisioners.ChannelReference, sub subscription) error {
+func (d *KafkaDispatcher) subscribe(channelRef channel.ChannelReference, sub subscription) error {
 	d.logger.Info("Subscribing", zap.Any("channelRef", channelRef), zap.Any("subscription", sub))
 
 	topicName := d.topicFunc(utils.KafkaChannelSeparator, channelRef.Namespace, channelRef.Name)
-	group := fmt.Sprintf("%s.%s", controller.Name, sub.UID)
+	group := fmt.Sprintf("%s.%s", "kafka", sub.UID)
 	consumer, err := d.kafkaCluster.NewConsumer(group, []string{topicName})
 
 	if err != nil {
@@ -255,7 +237,7 @@ func (d *KafkaDispatcher) subscribe(channelRef provisioners.ChannelReference, su
 	return nil
 }
 
-func (d *KafkaDispatcher) partitionConsumerLoop(consumer KafkaConsumer, channelRef provisioners.ChannelReference, sub subscription) {
+func (d *KafkaDispatcher) partitionConsumerLoop(consumer KafkaConsumer, channelRef channel.ChannelReference, sub subscription) {
 	d.logger.Info("Partition Consumer for subscription started", zap.Any("channelRef", channelRef), zap.Any("subscription", sub))
 	for {
 		pc, more := <-consumer.Partitions()
@@ -271,7 +253,7 @@ func (d *KafkaDispatcher) partitionConsumerLoop(consumer KafkaConsumer, channelR
 	d.logger.Info("Partition Consumer for subscription stopped", zap.Any("channelRef", channelRef), zap.Any("subscription", sub))
 }
 
-func (d *KafkaDispatcher) multiplexConsumerLoop(consumer KafkaConsumer, channelRef provisioners.ChannelReference, sub subscription) {
+func (d *KafkaDispatcher) multiplexConsumerLoop(consumer KafkaConsumer, channelRef channel.ChannelReference, sub subscription) {
 	d.logger.Info("Consumer for subscription started", zap.Any("channelRef", channelRef), zap.Any("subscription", sub))
 	for {
 		msg, more := <-consumer.Messages()
@@ -284,7 +266,7 @@ func (d *KafkaDispatcher) multiplexConsumerLoop(consumer KafkaConsumer, channelR
 	d.logger.Info("Consumer for subscription stopped", zap.Any("channelRef", channelRef), zap.Any("subscription", sub))
 }
 
-func (d *KafkaDispatcher) dispatch(channelRef provisioners.ChannelReference, sub subscription, consumer KafkaConsumer,
+func (d *KafkaDispatcher) dispatch(channelRef channel.ChannelReference, sub subscription, consumer KafkaConsumer,
 	msg *sarama.ConsumerMessage) error {
 	d.logger.Info("Dispatching a message for subscription", zap.Any("channelRef", channelRef),
 		zap.Any("subscription", sub), zap.Any("partition", msg.Partition), zap.Any("offset", msg.Offset))
@@ -298,9 +280,9 @@ func (d *KafkaDispatcher) dispatch(channelRef provisioners.ChannelReference, sub
 	return err
 }
 
-// unsubscribe reads kafkaConsumers which gets updated in UpdateConfig in a separate go-routine.
+// unsubscribe reads kafkaConsumers which gets updated in a separate go-routine.
 // unsubscribe must be called under updateLock.
-func (d *KafkaDispatcher) unsubscribe(channel provisioners.ChannelReference, sub subscription) error {
+func (d *KafkaDispatcher) unsubscribe(channel channel.ChannelReference, sub subscription) error {
 	d.logger.Info("Unsubscribing from channel", zap.Any("channel", channel), zap.Any("subscription", sub))
 	if consumer, ok := d.kafkaConsumers[channel][sub]; ok {
 		delete(d.kafkaConsumers[channel], sub)
@@ -311,8 +293,8 @@ func (d *KafkaDispatcher) unsubscribe(channel provisioners.ChannelReference, sub
 
 // dispatchMessage sends the request to exactly one subscription. It handles both the `call` and
 // the `sink` portions of the subscription.
-func (d *KafkaDispatcher) dispatchMessage(m *provisioners.Message, sub subscription) error {
-	return d.dispatcher.DispatchMessage(m, sub.SubscriberURI, sub.ReplyURI, provisioners.DispatchDefaults{})
+func (d *KafkaDispatcher) dispatchMessage(m *channel.Message, sub subscription) error {
+	return d.dispatcher.DispatchMessage(m, sub.SubscriberURI, sub.ReplyURI, channel.DispatchDefaults{})
 }
 
 func (d *KafkaDispatcher) getConfig() *multichannelfanout.Config {
@@ -323,11 +305,11 @@ func (d *KafkaDispatcher) setConfig(config *multichannelfanout.Config) {
 	d.config.Store(config)
 }
 
-func (d *KafkaDispatcher) getHostToChannelMap() map[string]provisioners.ChannelReference {
-	return d.hostToChannelMap.Load().(map[string]provisioners.ChannelReference)
+func (d *KafkaDispatcher) getHostToChannelMap() map[string]channel.ChannelReference {
+	return d.hostToChannelMap.Load().(map[string]channel.ChannelReference)
 }
 
-func (d *KafkaDispatcher) setHostToChannelMap(hcMap map[string]provisioners.ChannelReference) {
+func (d *KafkaDispatcher) setHostToChannelMap(hcMap map[string]channel.ChannelReference) {
 	d.hostToChannelMap.Store(hcMap)
 }
 
@@ -346,32 +328,32 @@ func NewDispatcher(args *KafkaDispatcherArgs) (*KafkaDispatcher, error) {
 	}
 
 	dispatcher := &KafkaDispatcher{
-		dispatcher: provisioners.NewMessageDispatcher(args.Logger.Sugar()),
+		dispatcher: channel.NewMessageDispatcher(args.Logger.Sugar()),
 
 		kafkaCluster:       &saramaCluster{kafkaBrokers: args.Brokers, consumerMode: args.ConsumerMode},
-		kafkaConsumers:     make(map[provisioners.ChannelReference]map[subscription]KafkaConsumer),
+		kafkaConsumers:     make(map[channel.ChannelReference]map[subscription]KafkaConsumer),
 		kafkaAsyncProducer: producer,
 
 		logger: args.Logger,
 	}
-	receiverFunc, err := provisioners.NewMessageReceiver(
-		func(channel provisioners.ChannelReference, message *provisioners.Message) error {
+	receiverFunc, err := channel.NewMessageReceiver(
+		func(channel channel.ChannelReference, message *channel.Message) error {
 			dispatcher.kafkaAsyncProducer.Input() <- toKafkaMessage(channel, message, args.TopicFunc)
 			return nil
 		},
 		args.Logger.Sugar(),
-		provisioners.ResolveChannelFromHostHeader(provisioners.ResolveChannelFromHostFunc(dispatcher.getChannelReferenceFromHost)))
+		channel.ResolveChannelFromHostHeader(channel.ResolveChannelFromHostFunc(dispatcher.getChannelReferenceFromHost)))
 	if err != nil {
 		return nil, err
 	}
 	dispatcher.receiver = receiverFunc
 	dispatcher.setConfig(&multichannelfanout.Config{})
-	dispatcher.setHostToChannelMap(map[string]provisioners.ChannelReference{})
+	dispatcher.setHostToChannelMap(map[string]channel.ChannelReference{})
 	dispatcher.topicFunc = args.TopicFunc
 	return dispatcher, nil
 }
 
-func (d *KafkaDispatcher) getChannelReferenceFromHost(host string) (provisioners.ChannelReference, error) {
+func (d *KafkaDispatcher) getChannelReferenceFromHost(host string) (channel.ChannelReference, error) {
 	chMap := d.getHostToChannelMap()
 	cr, ok := chMap[host]
 	if !ok {
@@ -380,19 +362,19 @@ func (d *KafkaDispatcher) getChannelReferenceFromHost(host string) (provisioners
 	return cr, nil
 }
 
-func fromKafkaMessage(kafkaMessage *sarama.ConsumerMessage) *provisioners.Message {
+func fromKafkaMessage(kafkaMessage *sarama.ConsumerMessage) *channel.Message {
 	headers := make(map[string]string)
 	for _, header := range kafkaMessage.Headers {
 		headers[string(header.Key)] = string(header.Value)
 	}
-	message := provisioners.Message{
+	message := channel.Message{
 		Headers: headers,
 		Payload: kafkaMessage.Value,
 	}
 	return &message
 }
 
-func toKafkaMessage(channel provisioners.ChannelReference, message *provisioners.Message, topicFunc TopicFunc) *sarama.ProducerMessage {
+func toKafkaMessage(channel channel.ChannelReference, message *channel.Message, topicFunc TopicFunc) *sarama.ProducerMessage {
 	kafkaMessage := sarama.ProducerMessage{
 		Topic: topicFunc(utils.KafkaChannelSeparator, channel.Namespace, channel.Name),
 		Value: sarama.ByteEncoder(message.Payload),

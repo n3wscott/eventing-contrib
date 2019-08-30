@@ -72,11 +72,6 @@ func Configuration(name string, namespace string, imagePath string) *servingv1be
 	}
 }
 
-// ClusterChannelProvisioner returns a ClusterChannelProvisioner for a given name
-func ClusterChannelProvisioner(name string) *corev1.ObjectReference {
-	return pkgTest.CoreV1ObjectReference("ClusterChannelProvisioner", apiVersion, name)
-}
-
 // ChannelRef returns an ObjectReference for a given Channel Name
 func ChannelRef(name string) *corev1.ObjectReference {
 	return pkgTest.CoreV1ObjectReference("Channel", apiVersion, name)

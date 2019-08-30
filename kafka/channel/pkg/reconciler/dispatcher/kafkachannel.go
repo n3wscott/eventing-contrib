@@ -26,16 +26,17 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
+	eventingduck "knative.dev/eventing/pkg/apis/duck/v1alpha1"
+	"knative.dev/eventing/pkg/channel/fanout"
+	"knative.dev/eventing/pkg/channel/multichannelfanout"
+	"knative.dev/eventing/pkg/logging"
+	"knative.dev/pkg/controller"
+
 	"knative.dev/eventing-contrib/kafka/channel/pkg/apis/messaging/v1alpha1"
 	messaginginformers "knative.dev/eventing-contrib/kafka/channel/pkg/client/informers/externalversions/messaging/v1alpha1"
 	listers "knative.dev/eventing-contrib/kafka/channel/pkg/client/listers/messaging/v1alpha1"
 	"knative.dev/eventing-contrib/kafka/channel/pkg/dispatcher"
 	"knative.dev/eventing-contrib/kafka/channel/pkg/reconciler"
-	eventingduck "knative.dev/eventing/pkg/apis/duck/v1alpha1"
-	"knative.dev/eventing/pkg/logging"
-	"knative.dev/eventing/pkg/provisioners/fanout"
-	"knative.dev/eventing/pkg/provisioners/multichannelfanout"
-	"knative.dev/pkg/controller"
 )
 
 const (

@@ -51,6 +51,6 @@ metadata:
   name: githubchannel
 spec:
   provisioner:
-    apiVersion: eventing.knative.dev/v1alpha1
-    kind: ClusterChannelProvisioner
+    apiVersion: messaging.knative.dev/v1alpha1
+    kind: InMemoryChannel
     name: in-memory-channel

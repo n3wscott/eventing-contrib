@@ -5,6 +5,6 @@ metadata:
   namespace: default
 spec:
   provisioner:
-    apiVersion: eventing.knative.dev/v1alpha1
-    kind: ClusterChannelProvisioner
+    apiVersion: messaing.knative.dev/v1alpha1
+    kind: InMemoryChannel
     name: in-memory-channel

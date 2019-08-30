@@ -18,12 +18,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/util/sets"
-
-	eventingduck "knative.dev/eventing/pkg/apis/duck/v1alpha1"
-	"knative.dev/eventing/pkg/provisioners"
-	"knative.dev/eventing/pkg/provisioners/fanout"
-	"knative.dev/eventing/pkg/provisioners/multichannelfanout"
+	"knative.dev/eventing/pkg/channel"
 	_ "knative.dev/pkg/system/testing"
 )
 
@@ -182,276 +177,6 @@ func (c *mockSaramaCluster) GetConsumerMode() cluster.ConsumerMode {
 	return c.consumerMode
 }
 
-func TestDispatcher_UpdateConfig(t *testing.T) {
-	testCases := []struct {
-		name             string
-		oldConfig        *multichannelfanout.Config
-		newConfig        *multichannelfanout.Config
-		subscribes       []string
-		unsubscribes     []string
-		createErr        string
-		oldHostToChanMap map[string]provisioners.ChannelReference
-		newHostToChanMap map[string]provisioners.ChannelReference
-	}{
-		{
-			name:             "nil config",
-			oldConfig:        &multichannelfanout.Config{},
-			newConfig:        nil,
-			createErr:        "nil config",
-			oldHostToChanMap: map[string]provisioners.ChannelReference{},
-			newHostToChanMap: map[string]provisioners.ChannelReference{},
-		},
-		{
-			name:             "same config",
-			oldConfig:        &multichannelfanout.Config{},
-			newConfig:        &multichannelfanout.Config{},
-			oldHostToChanMap: map[string]provisioners.ChannelReference{},
-			newHostToChanMap: map[string]provisioners.ChannelReference{},
-		},
-		{
-			name:      "config with no subscription",
-			oldConfig: &multichannelfanout.Config{},
-			newConfig: &multichannelfanout.Config{
-				ChannelConfigs: []multichannelfanout.ChannelConfig{
-					{
-						Namespace: "default",
-						Name:      "test-channel",
-						HostName:  "a.b.c.d",
-					},
-				},
-			},
-			oldHostToChanMap: map[string]provisioners.ChannelReference{},
-			newHostToChanMap: map[string]provisioners.ChannelReference{
-				"a.b.c.d": {Name: "test-channel", Namespace: "default"},
-			},
-		},
-		{
-			name:      "single channel w/ new subscriptions",
-			oldConfig: &multichannelfanout.Config{},
-			newConfig: &multichannelfanout.Config{
-				ChannelConfigs: []multichannelfanout.ChannelConfig{
-					{
-						Namespace: "default",
-						Name:      "test-channel",
-						HostName:  "a.b.c.d",
-						FanoutConfig: fanout.Config{
-							Subscriptions: []eventingduck.SubscriberSpec{
-								{
-									UID:           "subscription-1",
-									SubscriberURI: "http://test/subscriber",
-								},
-								{
-									UID:           "subscription-2",
-									SubscriberURI: "http://test/subscriber",
-								},
-							},
-						},
-					},
-				},
-			},
-			subscribes:       []string{"subscription-1", "subscription-2"},
-			oldHostToChanMap: map[string]provisioners.ChannelReference{},
-			newHostToChanMap: map[string]provisioners.ChannelReference{
-				"a.b.c.d": {Name: "test-channel", Namespace: "default"},
-			},
-		},
-		{
-			name: "single channel w/ existing subscriptions",
-			oldConfig: &multichannelfanout.Config{
-				ChannelConfigs: []multichannelfanout.ChannelConfig{
-					{
-						Namespace: "default",
-						Name:      "test-channel",
-						HostName:  "a.b.c.d",
-						FanoutConfig: fanout.Config{
-							Subscriptions: []eventingduck.SubscriberSpec{
-								{
-									UID:           "subscription-1",
-									SubscriberURI: "http://test/subscriber",
-								},
-								{
-									UID:           "subscription-2",
-									SubscriberURI: "http://test/subscriber",
-								}}}}},
-			},
-			newConfig: &multichannelfanout.Config{
-				ChannelConfigs: []multichannelfanout.ChannelConfig{
-					{
-						Namespace: "default",
-						Name:      "test-channel",
-						HostName:  "a.b.c.d",
-						FanoutConfig: fanout.Config{
-							Subscriptions: []eventingduck.SubscriberSpec{
-								{
-									UID:           "subscription-2",
-									SubscriberURI: "http://test/subscriber",
-								},
-								{
-									UID:           "subscription-3",
-									SubscriberURI: "http://test/subscriber",
-								},
-							},
-						},
-					},
-				},
-			},
-			subscribes:   []string{"subscription-2", "subscription-3"},
-			unsubscribes: []string{"subscription-1"},
-			oldHostToChanMap: map[string]provisioners.ChannelReference{
-				"a.b.c.d": {Name: "test-channel", Namespace: "default"},
-			},
-			newHostToChanMap: map[string]provisioners.ChannelReference{
-				"a.b.c.d": {Name: "test-channel", Namespace: "default"},
-			},
-		},
-		{
-			name: "multi channel w/old and new subscriptions",
-			oldConfig: &multichannelfanout.Config{
-				ChannelConfigs: []multichannelfanout.ChannelConfig{
-					{
-						Namespace: "default",
-						Name:      "test-channel-1",
-						HostName:  "a.b.c.d",
-						FanoutConfig: fanout.Config{
-							Subscriptions: []eventingduck.SubscriberSpec{
-								{
-									UID:           "subscription-1",
-									SubscriberURI: "http://test/subscriber",
-								},
-								{
-									UID:           "subscription-2",
-									SubscriberURI: "http://test/subscriber",
-								},
-							},
-						}}}},
-			newConfig: &multichannelfanout.Config{
-				ChannelConfigs: []multichannelfanout.ChannelConfig{
-					{
-						Namespace: "default",
-						Name:      "test-channel-1",
-						HostName:  "a.b.c.d",
-						FanoutConfig: fanout.Config{
-							Subscriptions: []eventingduck.SubscriberSpec{
-								{
-									UID:           "subscription-1",
-									SubscriberURI: "http://test/subscriber",
-								},
-							},
-						},
-					},
-					{
-						Namespace: "default",
-						Name:      "test-channel-2",
-						HostName:  "e.f.g.h",
-						FanoutConfig: fanout.Config{
-							Subscriptions: []eventingduck.SubscriberSpec{
-								{
-									UID:           "subscription-3",
-									SubscriberURI: "http://test/subscriber",
-								},
-								{
-									UID:           "subscription-4",
-									SubscriberURI: "http://test/subscriber",
-								},
-							},
-						},
-					},
-				},
-			},
-			subscribes:   []string{"subscription-1", "subscription-3", "subscription-4"},
-			unsubscribes: []string{"subscription-2"},
-			oldHostToChanMap: map[string]provisioners.ChannelReference{
-				"a.b.c.d": {Name: "test-channel-1", Namespace: "default"},
-			},
-			newHostToChanMap: map[string]provisioners.ChannelReference{
-				"a.b.c.d": {Name: "test-channel-1", Namespace: "default"},
-				"e.f.g.h": {Name: "test-channel-2", Namespace: "default"},
-			},
-		},
-		{
-			name:      "Duplicate hostnames",
-			oldConfig: &multichannelfanout.Config{},
-			newConfig: &multichannelfanout.Config{
-				ChannelConfigs: []multichannelfanout.ChannelConfig{
-					{
-						Namespace: "default",
-						Name:      "test-channel-1",
-						HostName:  "a.b.c.d",
-					},
-					{
-						Namespace: "default",
-						Name:      "test-channel-2",
-						HostName:  "a.b.c.d",
-					},
-				},
-			},
-			createErr:        "duplicate hostName found. Each channel must have a unique host header. HostName:a.b.c.d, channel:default.test-channel-2, channel:default.test-channel-1",
-			oldHostToChanMap: map[string]provisioners.ChannelReference{},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Logf("Running %s", t.Name())
-			d := &KafkaDispatcher{
-				kafkaCluster:   &mockSaramaCluster{closed: true},
-				kafkaConsumers: make(map[provisioners.ChannelReference]map[subscription]KafkaConsumer),
-				topicFunc:      utils.TopicName,
-				logger:         zap.NewNop(),
-			}
-			d.setConfig(&multichannelfanout.Config{})
-			d.setHostToChannelMap(map[string]provisioners.ChannelReference{})
-
-			// Initialize using oldConfig
-			err := d.UpdateConfig(tc.oldConfig)
-			if err != nil {
-
-				t.Errorf("unexpected error: %v", err)
-			}
-			oldSubscribers := sets.NewString()
-			for _, subMap := range d.kafkaConsumers {
-				for sub := range subMap {
-					oldSubscribers.Insert(sub.UID)
-				}
-			}
-			if diff := sets.NewString(tc.unsubscribes...).Difference(oldSubscribers); diff.Len() != 0 {
-				t.Errorf("subscriptions %+v were never subscribed", diff)
-			}
-			if diff := cmp.Diff(tc.oldHostToChanMap, d.getHostToChannelMap()); diff != "" {
-				t.Errorf("unexpected hostToChannelMap (-want, +got) = %v", diff)
-			}
-
-			// Update with new config
-			err = d.UpdateConfig(tc.newConfig)
-			if tc.createErr != "" {
-				if err == nil {
-					t.Errorf("Expected UpdateConfig error: '%v'. Actual nil", tc.createErr)
-				} else if err.Error() != tc.createErr {
-					t.Errorf("Unexpected UpdateConfig error. Expected '%v'. Actual '%v'", tc.createErr, err)
-				}
-				return
-			} else if err != nil {
-				t.Errorf("Unexpected UpdateConfig error. Expected nil. Actual '%v'", err)
-			}
-
-			var newSubscribers []string
-			for _, subMap := range d.kafkaConsumers {
-				for sub := range subMap {
-					newSubscribers = append(newSubscribers, sub.UID)
-				}
-			}
-
-			if diff := cmp.Diff(tc.subscribes, newSubscribers, sortStrings); diff != "" {
-				t.Errorf("unexpected subscribers (-want, +got) = %v", diff)
-			}
-			if diff := cmp.Diff(tc.newHostToChanMap, d.getHostToChannelMap()); diff != "" {
-				t.Errorf("unexpected hostToChannelMap (-want, +got) = %v", diff)
-			}
-
-		})
-	}
-}
-
 func TestFromKafkaMessage(t *testing.T) {
 	data := []byte("data")
 	kafkaMessage := &sarama.ConsumerMessage{
@@ -463,7 +188,7 @@ func TestFromKafkaMessage(t *testing.T) {
 		},
 		Value: data,
 	}
-	want := &provisioners.Message{
+	want := &channel.Message{
 		Headers: map[string]string{
 			"k1": "v1",
 		},
@@ -477,11 +202,11 @@ func TestFromKafkaMessage(t *testing.T) {
 
 func TestToKafkaMessage(t *testing.T) {
 	data := []byte("data")
-	channelRef := provisioners.ChannelReference{
+	channelRef := channel.ChannelReference{
 		Name:      "test-channel",
 		Namespace: "test-ns",
 	}
-	msg := &provisioners.Message{
+	msg := &channel.Message{
 		Headers: map[string]string{
 			"k1": "v1",
 		},
@@ -527,8 +252,8 @@ func TestSubscribe(t *testing.T) {
 	data := []byte("data")
 	d := &KafkaDispatcher{
 		kafkaCluster:   sc,
-		kafkaConsumers: make(map[provisioners.ChannelReference]map[subscription]KafkaConsumer),
-		dispatcher:     provisioners.NewMessageDispatcher(zap.NewNop().Sugar()),
+		kafkaConsumers: make(map[channel.ChannelReference]map[subscription]KafkaConsumer),
+		dispatcher:     channel.NewMessageDispatcher(zap.NewNop().Sugar()),
 		logger:         zap.NewNop(),
 		topicFunc:      utils.TopicName,
 	}
@@ -541,7 +266,7 @@ func TestSubscribe(t *testing.T) {
 	server := httptest.NewServer(testHandler)
 	defer server.Close()
 
-	channelRef := provisioners.ChannelReference{
+	channelRef := channel.ChannelReference{
 		Name:      "test-channel",
 		Namespace: "test-ns",
 	}
@@ -574,8 +299,8 @@ func TestPartitionConsumer(t *testing.T) {
 	data := []byte("data")
 	d := &KafkaDispatcher{
 		kafkaCluster:   sc,
-		kafkaConsumers: make(map[provisioners.ChannelReference]map[subscription]KafkaConsumer),
-		dispatcher:     provisioners.NewMessageDispatcher(zap.NewNop().Sugar()),
+		kafkaConsumers: make(map[channel.ChannelReference]map[subscription]KafkaConsumer),
+		dispatcher:     channel.NewMessageDispatcher(zap.NewNop().Sugar()),
 		logger:         zap.NewNop(),
 		topicFunc:      utils.TopicName,
 	}
@@ -585,7 +310,7 @@ func TestPartitionConsumer(t *testing.T) {
 		done:    make(chan bool)}
 	server := httptest.NewServer(testHandler)
 	defer server.Close()
-	channelRef := provisioners.ChannelReference{
+	channelRef := channel.ChannelReference{
 		Name:      "test-channel",
 		Namespace: "test-ns",
 	}
@@ -628,7 +353,7 @@ func TestSubscribeError(t *testing.T) {
 		topicFunc:    utils.TopicName,
 	}
 
-	channelRef := provisioners.ChannelReference{
+	channelRef := channel.ChannelReference{
 		Name:      "test-channel",
 		Namespace: "test-ns",
 	}
@@ -651,7 +376,7 @@ func TestUnsubscribeUnknownSub(t *testing.T) {
 		logger:       zap.NewNop(),
 	}
 
-	channelRef := provisioners.ChannelReference{
+	channelRef := channel.ChannelReference{
 		Name:      "test-channel",
 		Namespace: "test-ns",
 	}
@@ -671,7 +396,7 @@ func TestKafkaDispatcher_Start(t *testing.T) {
 		t.Errorf("Expected error want %s, got %s", "message receiver is not set", err)
 	}
 
-	receiver, err := provisioners.NewMessageReceiver(func(channel provisioners.ChannelReference, message *provisioners.Message) error {
+	receiver, err := channel.NewMessageReceiver(func(channel channel.ChannelReference, message *channel.Message) error {
 		return nil
 	}, zap.NewNop().Sugar())
 	if err != nil {
