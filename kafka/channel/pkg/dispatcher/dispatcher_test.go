@@ -21,9 +21,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	eventingduck "knative.dev/eventing/pkg/apis/duck/v1alpha1"
-	"knative.dev/eventing/pkg/provisioners"
-	"knative.dev/eventing/pkg/provisioners/fanout"
-	"knative.dev/eventing/pkg/provisioners/multichannelfanout"
+	"knative.dev/eventing/pkg/channel"
+	"knative.dev/eventing/pkg/channel/fanout"
+	"knative.dev/eventing/pkg/channel/multichannelfanout"
 	_ "knative.dev/pkg/system/testing"
 )
 

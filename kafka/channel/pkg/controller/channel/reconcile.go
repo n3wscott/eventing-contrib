@@ -33,7 +33,7 @@ import (
 	"knative.dev/eventing-contrib/kafka/channel/pkg/controller"
 	topicUtils "knative.dev/eventing-contrib/kafka/channel/pkg/utils"
 	eventingv1alpha1 "knative.dev/eventing/pkg/apis/eventing/v1alpha1"
-	util "knative.dev/eventing/pkg/provisioners"
+	util "knative.dev/eventing/pkg/channel"
 
 	eventingNames "knative.dev/eventing/pkg/reconciler/names"
 	"knative.dev/pkg/apis"

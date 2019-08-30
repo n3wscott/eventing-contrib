@@ -31,8 +31,8 @@ import (
 	"knative.dev/eventing/pkg/apis/duck/v1alpha1"
 	eventingduck "knative.dev/eventing/pkg/apis/duck/v1alpha1"
 	eventingv1alpha1 "knative.dev/eventing/pkg/apis/eventing/v1alpha1"
+	"knative.dev/eventing/pkg/channel"
 	"knative.dev/eventing/pkg/logging"
-	"knative.dev/eventing/pkg/provisioners"
 )
 
 const (

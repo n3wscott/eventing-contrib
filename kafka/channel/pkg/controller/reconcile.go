@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"knative.dev/eventing/pkg/apis/eventing/v1alpha1"
-	util "knative.dev/eventing/pkg/provisioners"
+	util "knative.dev/eventing/pkg/channel"
 )
 
 const (

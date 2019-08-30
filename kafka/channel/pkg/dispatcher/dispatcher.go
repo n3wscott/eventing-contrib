@@ -30,8 +30,8 @@ import (
 
 	"knative.dev/eventing-contrib/kafka/channel/pkg/controller"
 	eventingduck "knative.dev/eventing/pkg/apis/duck/v1alpha1"
-	"knative.dev/eventing/pkg/provisioners"
-	"knative.dev/eventing/pkg/provisioners/multichannelfanout"
+	"knative.dev/eventing/pkg/channel"
+	"knative.dev/eventing/pkg/channel/multichannelfanout"
 )
 
 type KafkaDispatcher struct {
