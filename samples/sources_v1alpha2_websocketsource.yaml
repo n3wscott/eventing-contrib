@@ -34,7 +34,7 @@
 #           number: 443
 #       weight: 100
 # ---
-apiVersion: sources.eventing.knative.dev/v1alpha1
+apiVersion: sources.knative.dev/v1alpha1
 kind: ContainerSource
 metadata:
   name: urbanobservatory-event-source

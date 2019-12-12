@@ -46,7 +46,7 @@ rules:
   - delete
 
 - apiGroups:
-  - sources.eventing.knative.dev
+  - sources.knative.dev
   resources:
   - awssqssources
   verbs:
@@ -56,7 +56,7 @@ rules:
   - update
   - patch
 - apiGroups:
-  - sources.eventing.knative.dev
+  - sources.knative.dev
   resources:
   - awssqssources/status
   - awssqssources/finalizers
@@ -106,7 +106,7 @@ metadata:
     duck.knative.dev/source: "true"
 rules:
   - apiGroups:
-      - "sources.eventing.knative.dev"
+      - "sources.knative.dev"
     resources:
       - "awssqssources"
     verbs:
